@@ -49,7 +49,7 @@ char currZStr[12];
 unsigned char statusReg = 0;
 unsigned char wrongOrientation = 1; //assume incorrect orientaion on startup
 unsigned char pinBStatus = 0;
-unsigned char sensitivityLevel = 0;
+unsigned char sensitivityLevel = 3;
 unsigned char receivedData = 0;
 
 enum system_states {initial, setup, orientation_guard, standby, IMU_read, offset_calc, update_status} system_state;
@@ -293,6 +293,7 @@ void enablePWM()
 void disablePWM()
 {
 	TCCR1A = 0;
+	TCNT1 = 0;//clear count to prevent glitches on restart
 }
 
 
@@ -328,7 +329,8 @@ void setupUSART()
 	UBRR0H = (uint8_t)(USART_PRESCALER>>8); //cast and shift for upper nibble of UBRR
 	UBRR0L = (uint8_t)(USART_PRESCALER); //cast and shift for lower nibble of UBRR
 	UCSR0B |= (1<<RXEN0)|(1<<TXEN0);
-	UCSR0C |= ((1<<UCSZ00)|(1<<UCSZ01));
+	UCSR0C |= ((1<<UCSZ00)|(1<<UCSZ01)|(1<<UPM01));//Enable standard USART protocol + Even parity
+	//UCSR0C |= ((1<<UCSZ00)|(1<<UCSZ01));//Enable standard USART protocol (No Parity)
 }
 
 void sendUSART(unsigned char dataOut)
@@ -399,36 +401,6 @@ void i2c_stop()
 {
 	TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWSTO);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

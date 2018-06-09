@@ -51,6 +51,7 @@ unsigned char wrongOrientation = 1; //assume incorrect orientaion on startup
 unsigned char pinBStatus = 0;
 unsigned char sensitivityLevel = 3;
 unsigned char receivedData = 0;
+unsigned char dataRecievedFlag = 0;
 
 enum system_states {initial, setup, orientation_guard, standby, IMU_read, offset_calc, update_status} system_state;
 
@@ -93,7 +94,7 @@ void sys_tick()
 				system_state = IMU_read;
 				getIMUData();
 				enablePWM();
-				_delay_ms(1000);
+				_delay_ms(1500);
 				disablePWM();//implement near 100 percent duty cycle
 			}
 			else
@@ -172,6 +173,16 @@ void sys_tick()
 		
 		case offset_calc:
 			statusReg &= 0xF0;
+			if(dataRecievedFlag == 1)
+			{
+				//statusReg &= 0xF0;
+				sensitivityLevel = (statusReg >> 5);	
+				dataRecievedFlag = 0;			
+			}
+
+			if (sensitivityLevel > 0)
+			{
+
 			
 			currDiffY = abs(currY - storedY);
 			if(currDiffY > (5 * (sensitivityLevel + 1) ) )
@@ -210,6 +221,8 @@ void sys_tick()
 			{
 				statusReg |= 0x0F;
 			}
+				
+			}
 			
 			if ((statusReg & 0x0F) >= 1)
 			{
@@ -229,10 +242,10 @@ void sys_tick()
 				statusReg |= 0x10;//set calibration event flag
 				statusReg &= 0xF0;
 				disablePWM();
-				PORTD |= 0x1C;
+				//PORTD |= 0x1C;
 				_delay_ms(1000);
 				enablePWM();
-				_delay_ms(1000);
+				_delay_ms(1500);
 				disablePWM();
 				
 				
@@ -242,8 +255,15 @@ void sys_tick()
 			if(UCSR0A & (1<<RXC0))//usart avalible
 			{
 				receivedData = receiveUSART();//set recieved data
-				statusReg &= (receivedData | 0x1F);//bitmask update statusreg sensitivity
+				statusReg &= 0x1F;//bitmask update statusreg sensitivity
+				statusReg |= receivedData;
 				sendUSART(statusReg);//send local statusreg over usart
+				dataRecievedFlag = 1;// was zero
+				
+			}
+			else
+			{
+				dataRecievedFlag = 0;
 			}
 			statusReg &= 0xEF;//clear calibration event flag
 			break;
@@ -279,15 +299,19 @@ void setupPWM()
 {
 	DDRB |= 0xFD; //Enable pins required for 16-bit PWM as output
 	ICR1 = 0xFFFF;
-	OCR1A = 0x7FFF;
-	OCR1B = 0x7FFF; //Set registers for 50% duty cycle
+	//OCR1A = 0x7FFF;
+	OCR1A = 0xC002;
+	//OCR1B = 0x7FFF; //Set registers for 50% duty cycle
+	OCR1B = 0x3FFD;
 	TCCR1B |= (1 << WGM12)|(1 << WGM13);
 	TCCR1B |= (1 << CS11) | (1 << CS10); //Prescaler of 64, yielding ~2Hz Freq with 8MHz clock
 }
 
 void enablePWM()
 {
+	TCNT1 = 0;
 	TCCR1A |= (1 << COM1A1)|(1 << COM1B1) | (1 << WGM11);
+	//TCNT1 = 0;
 }
 
 void disablePWM()
@@ -329,8 +353,8 @@ void setupUSART()
 	UBRR0H = (uint8_t)(USART_PRESCALER>>8); //cast and shift for upper nibble of UBRR
 	UBRR0L = (uint8_t)(USART_PRESCALER); //cast and shift for lower nibble of UBRR
 	UCSR0B |= (1<<RXEN0)|(1<<TXEN0);
-	UCSR0C |= ((1<<UCSZ00)|(1<<UCSZ01)|(1<<UPM01));//Enable standard USART protocol + Even parity
-	//UCSR0C |= ((1<<UCSZ00)|(1<<UCSZ01));//Enable standard USART protocol (No Parity)
+	//UCSR0C |= ((1<<UCSZ00)|(1<<UCSZ01)|(1<<UPM01));//Enable standard USART protocol + Even parity
+	UCSR0C |= ((1<<UCSZ00)|(1<<UCSZ01));//Enable standard USART protocol (No Parity)
 }
 
 void sendUSART(unsigned char dataOut)
@@ -401,6 +425,36 @@ void i2c_stop()
 {
 	TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWSTO);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

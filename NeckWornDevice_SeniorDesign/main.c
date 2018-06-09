@@ -1,8 +1,9 @@
 /*
- * atmega328_I2ctest.c
+ *
  *
  * Created: 4/24/2018 10:08:23 PM
- * Author : Hecto
+ * Author : Hector Jimenez
+ * Neck-Worn Device of UCR CS179J Senior Design Project
  */ 
 
 #define BAUDRATE 38400
@@ -138,10 +139,8 @@ void sys_tick()
 		
 		case setup:
 			setupPWM();
-			//setupScreen();
 			setupUSART();
 			setupIMU();
-			//getIMUData();//throwaway read
 			DDRB &= 0xFE;
 			PORTB |= 0x01;//setup B0 for button input
 			break;
@@ -152,7 +151,6 @@ void sys_tick()
 			{
 				wrongOrientation = 1;
 				enablePWM();
-				// _delay_ms(1000);
 			}
 			else
 			{
@@ -175,7 +173,6 @@ void sys_tick()
 			statusReg &= 0xF0;
 			if(dataRecievedFlag == 1)
 			{
-				//statusReg &= 0xF0;
 				sensitivityLevel = (statusReg >> 5);	
 				dataRecievedFlag = 0;			
 			}
@@ -183,45 +180,41 @@ void sys_tick()
 			if (sensitivityLevel > 0)
 			{
 
-			
-			currDiffY = abs(currY - storedY);
-			if(currDiffY > (5 * (sensitivityLevel + 1) ) )
-			//if(0)
-			{
-				if(currY > storedY)
+				currDiffY = abs(currY - storedY);
+				if (currDiffY > (5 * (sensitivityLevel + 1)))
+				//if(0)
 				{
-					//leaning left
-					statusReg |= 0x04;
-				} 
-				else
-				{
-					//leaning right
-					statusReg |= 0x08;
+					if (currY > storedY)
+					{
+						//leaning left
+						statusReg |= 0x04;
+					}
+					else
+					{
+						//leaning right
+						statusReg |= 0x08;
+					}
 				}
-			}
-			
-			currDiffZ = abs(currZ - storedZ);
-			if(currDiffZ > ( 5 * (sensitivityLevel + 1) ) )
-			//if(0)
-			{
-				if(currZ > storedZ)
+
+				currDiffZ = abs(currZ - storedZ);
+				if (currDiffZ > (5 * (sensitivityLevel + 1)))
 				{
-					//leaning forward
-					statusReg |= 0x01;
-				} 
-				else
-				{
-					//leaning backward
-					statusReg |= 0x02;
+					if (currZ > storedZ)
+					{
+						//leaning forward
+						statusReg |= 0x01;
+					}
+					else
+					{
+						//leaning backward
+						statusReg |= 0x02;
+					}
 				}
-			} 
-			
-			if(currX > 0)
-			//if(0)
-			{
-				statusReg |= 0x0F;
-			}
-				
+
+				if (currX > 0)
+				{
+					statusReg |= 0x0F;
+				}
 			}
 			
 			if ((statusReg & 0x0F) >= 1)
@@ -250,8 +243,6 @@ void sys_tick()
 				
 				
 			}
-			//statusReg = 0xF0;
-			//sendUSART(statusReg);
 			if(UCSR0A & (1<<RXC0))//usart avalible
 			{
 				receivedData = receiveUSART();//set recieved data
@@ -280,10 +271,7 @@ int main(void)
 {
 	DDRD |= 0x1C;
 	PORTD &= 0xE3;
-	//PORTD |= 0x1C;
 	system_state = initial;
-	//setupPWM();
-	//enablePWM();
 	
     while (1) 
     {
@@ -300,8 +288,8 @@ void setupPWM()
 	DDRB |= 0xFD; //Enable pins required for 16-bit PWM as output
 	ICR1 = 0xFFFF;
 	//OCR1A = 0x7FFF;
-	OCR1A = 0xC002;
-	//OCR1B = 0x7FFF; //Set registers for 50% duty cycle
+	OCR1A = 0xC002;//set registers for 25% duty cycle (Used)
+	//OCR1B = 0x7FFF; //Set registers for 50% duty cycle, longer vibration duration (Unused)
 	OCR1B = 0x3FFD;
 	TCCR1B |= (1 << WGM12)|(1 << WGM13);
 	TCCR1B |= (1 << CS11) | (1 << CS10); //Prescaler of 64, yielding ~2Hz Freq with 8MHz clock
@@ -425,37 +413,3 @@ void i2c_stop()
 {
 	TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWSTO);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
